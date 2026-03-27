@@ -143,7 +143,9 @@
     els.habitsTable.innerHTML = rows
       .map(
         (r) => `<tr>
-        <td>${escapeHtml(String(r.course_id))}</td>
+        <td>${escapeHtml(
+          r.course_name || r.courseName || (r.course_id != null ? `Course ${r.course_id}` : "—")
+        )}</td>
         <td>${r.avg_days_before_due != null ? Number(r.avg_days_before_due).toFixed(2) : "—"}</td>
         <td>${escapeHtml(String(r.n_samples ?? ""))}</td>
         <td>${escapeHtml(String(r.snooze_count ?? ""))}</td>
@@ -244,6 +246,7 @@
     const body = {
       assignment_id: id,
       course_id: a?.course_id ?? null,
+      course_name: a?.course_name ?? null,
       event,
       due_at: due,
       metadata: {},

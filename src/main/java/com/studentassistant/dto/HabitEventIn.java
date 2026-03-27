@@ -10,6 +10,7 @@ public record HabitEventIn(
         @NotBlank String assignmentId,
         @Pattern(regexp = "opened|worked|submitted|snoozed") String event,
         Long courseId,
+        String courseName,
         OffsetDateTime dueAt,
         Map<String, Object> metadata
 ) {

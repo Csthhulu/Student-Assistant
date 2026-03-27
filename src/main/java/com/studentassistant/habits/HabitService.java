@@ -56,12 +56,24 @@ public class HabitService {
                     updated_at TEXT
                 )
                 """);
+        ensureCourseNameColumn();
+    }
+
+    private void ensureCourseNameColumn() {
+        List<String> cols = jdbc.query(
+                "PRAGMA table_info(course_habits)",
+                (rs, rowNum) -> rs.getString("name")
+        );
+        if (!cols.contains("course_name")) {
+            jdbc.execute("ALTER TABLE course_habits ADD COLUMN course_name TEXT");
+        }
     }
 
     public void recordEvent(
             String assignmentId,
             String event,
             Long courseId,
+            String courseName,
             Map<String, Object> metadata,
             OffsetDateTime dueAt
     ) {
@@ -85,7 +97,7 @@ public class HabitService {
                     metaJson
             );
             if ("submitted".equals(event) && courseId != null && dueAt != null) {
-                updateCourseHabitOnSubmit(courseId, dueAt, OffsetDateTime.now(ZoneOffset.UTC));
+                updateCourseHabitOnSubmit(courseId, dueAt, OffsetDateTime.now(ZoneOffset.UTC), courseName);
             }
             if ("snoozed".equals(event) && courseId != null) {
                 int p = 0;
@@ -99,15 +111,17 @@ public class HabitService {
                     p = 0;
                 }
                 jdbc.update("""
-                                INSERT INTO course_habits (course_id, snooze_count, updated_at)
-                                VALUES (?, ?, ?)
+                                INSERT INTO course_habits (course_id, snooze_count, updated_at, course_name)
+                                VALUES (?, ?, ?, ?)
                                 ON CONFLICT(course_id) DO UPDATE SET
                                     snooze_count = excluded.snooze_count,
-                                    updated_at = excluded.updated_at
+                                    updated_at = excluded.updated_at,
+                                    course_name = COALESCE(excluded.course_name, course_habits.course_name)
                                 """,
                         courseId,
                         p + 1,
-                        now
+                        now,
+                        blankToNull(courseName)
                 );
             }
         } finally {
@@ -115,7 +129,11 @@ public class HabitService {
         }
     }
 
-    private void updateCourseHabitOnSubmit(long courseId, OffsetDateTime dueAt, OffsetDateTime submittedAt) {
+    private static String blankToNull(String s) {
+        return s != null && !s.isBlank() ? s : null;
+    }
+
+    private void updateCourseHabitOnSubmit(long courseId, OffsetDateTime dueAt, OffsetDateTime submittedAt, String courseName) {
         double daysBefore = (dueAt.toEpochSecond() - submittedAt.toEpochSecond()) / 86400.0;
         daysBefore = Math.max(0.0, daysBefore);
         String now = OffsetDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
@@ -129,18 +147,21 @@ public class HabitService {
                 )
         );
 
+        String cn = blankToNull(courseName);
         if (rows.isEmpty() || rows.getFirst().avgDaysBeforeDue == null) {
             jdbc.update("""
-                            INSERT INTO course_habits (course_id, avg_days_before_due, n_samples, updated_at)
-                            VALUES (?, ?, 1, ?)
+                            INSERT INTO course_habits (course_id, avg_days_before_due, n_samples, updated_at, course_name)
+                            VALUES (?, ?, 1, ?, ?)
                             ON CONFLICT(course_id) DO UPDATE SET
                                 avg_days_before_due = excluded.avg_days_before_due,
                                 n_samples = course_habits.n_samples + 1,
-                                updated_at = excluded.updated_at
+                                updated_at = excluded.updated_at,
+                                course_name = COALESCE(excluded.course_name, course_habits.course_name)
                             """,
                     courseId,
                     daysBefore,
-                    now
+                    now,
+                    cn
             );
             return;
         }
@@ -149,10 +170,12 @@ public class HabitService {
         int n = row.nSamples;
         double neu = old * (1 - EMA_ALPHA) + daysBefore * EMA_ALPHA;
         jdbc.update(
-                "UPDATE course_habits SET avg_days_before_due = ?, n_samples = ?, updated_at = ? WHERE course_id = ?",
+                "UPDATE course_habits SET avg_days_before_due = ?, n_samples = ?, updated_at = ?, "
+                        + "course_name = COALESCE(?, course_name) WHERE course_id = ?",
                 neu,
                 n + 1,
                 now,
+                cn,
                 courseId
         );
     }
@@ -228,6 +251,7 @@ public class HabitService {
                 (rs, rowNum) -> {
                     Map<String, Object> m = new HashMap<>();
                     m.put("course_id", rs.getLong("course_id"));
+                    m.put("course_name", rs.getString("course_name"));
                     m.put("avg_days_before_due", rs.getObject("avg_days_before_due"));
                     m.put("n_samples", rs.getInt("n_samples"));
                     m.put("snooze_count", rs.getInt("snooze_count"));

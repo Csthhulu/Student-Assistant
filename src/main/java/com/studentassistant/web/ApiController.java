@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -66,6 +67,7 @@ public class ApiController {
                 body.assignmentId(),
                 body.event(),
                 body.courseId(),
+                body.courseName(),
                 body.metadata(),
                 body.dueAt()
         );
@@ -77,6 +79,7 @@ public class ApiController {
         var raw = canvasClient.fetchAllUpcomingAssignments();
         var assignments = assignmentMappingService.fromCanvasNodes(raw);
         var hsum = habitService.summary();
+        enrichHabitSummaryCourseNames(hsum, assignments);
         String coach = assistantService.heuristicBrief(assignments);
         if (appProperties.geminiConfigured()) {
             try {
@@ -120,5 +123,39 @@ public class ApiController {
                         + "and log work in /habits/event. You said: \"" + last + "\"",
                 false
         );
+    }
+
+    /**
+     * Fill missing course_name on habit rows using Canvas assignment data so the UI shows titles, not only IDs.
+     */
+    @SuppressWarnings("unchecked")
+    private static void enrichHabitSummaryCourseNames(Map<String, Object> hsum, List<AssignmentOut> assignments) {
+        Object tc = hsum.get("tracked_courses");
+        if (!(tc instanceof List<?> list) || list.isEmpty()) {
+            return;
+        }
+        Map<Long, String> idToName = new HashMap<>();
+        for (AssignmentOut a : assignments) {
+            if (a.courseId() != null && a.courseName() != null && !a.courseName().isBlank()) {
+                idToName.putIfAbsent(a.courseId(), a.courseName());
+            }
+        }
+        for (Object o : list) {
+            if (!(o instanceof Map<?, ?> row)) {
+                continue;
+            }
+            Map<String, Object> m = (Map<String, Object>) row;
+            Object cn = m.get("course_name");
+            if (cn != null && !cn.toString().isBlank()) {
+                continue;
+            }
+            Object cid = m.get("course_id");
+            if (cid instanceof Number n) {
+                String name = idToName.get(n.longValue());
+                if (name != null) {
+                    m.put("course_name", name);
+                }
+            }
+        }
     }
 }
