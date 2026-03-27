@@ -1,0 +1,13 @@
+server:
+  port: 8765
+
+spring:
+  datasource:
+    url: "jdbc:sqlite:${user.home}/.student-assistant/habits.sqlite3"
+    driver-class-name: org.sqlite.JDBC
+
+student-assistant:
+  canvas-base-url: ${CANVAS_BASE_URL:}
+  canvas-access-token: ${CANVAS_ACCESS_TOKEN:}
+  gemini-api-key: ${GEMINI_API_KEY:}
+  gemini-model: ${GEMINI_MODEL:gemini-2.5-flash}

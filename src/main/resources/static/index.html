@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Student Study Assistant</title>
+    <link rel="stylesheet" href="/css/app.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">📚</span>
+        <span>Student Study Assistant</span>
+      </div>
+      <nav class="tabs" aria-label="Sections">
+        <button type="button" class="active" data-tab="dashboard">Dashboard</button>
+        <button type="button" data-tab="chat">Chat</button>
+      </nav>
+      <div id="status-pill" class="status-pill" role="status">
+        <span class="dot" aria-hidden="true"></span>
+        <span>Checking…</span>
+      </div>
+    </header>
+
+    <main>
+      <section id="panel-dashboard" class="panel active">
+        <div class="toolbar">
+          <button type="button" id="btn-load-dashboard" class="btn btn-primary">
+            Refresh dashboard
+          </button>
+          <button type="button" id="btn-refresh" class="btn">Check API</button>
+        </div>
+        <div id="dash-error" class="error-banner" hidden></div>
+
+        <div class="card">
+          <h2>Coach</h2>
+            <p id="coach-body" class="coach-body text-muted">Loading…</p>
+        </div>
+
+        <div class="card">
+          <h2>Assignments</h2>
+          <div id="assignments" class="assignments-grid"></div>
+        </div>
+
+        <div class="card">
+          <h2>Habits</h2>
+          <p id="habits-meta" class="hint" style="margin-top:0"></p>
+          <p id="habits-hint" class="hint"></p>
+          <table class="habits-table">
+            <thead>
+              <tr>
+                <th>Course ID</th>
+                <th>Avg days early</th>
+                <th>Samples</th>
+                <th>Snoozes</th>
+              </tr>
+            </thead>
+            <tbody id="habits-table-body"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Log activity</h2>
+          <p class="hint">
+            Optional: record what you did so priorities adapt. Use the same Canvas-linked env as the
+            API.
+          </p>
+          <form id="habit-form">
+            <label class="checkbox" style="display:block;margin-bottom:0.5rem">
+              Assignment
+              <select id="habit-assignment"></select>
+            </label>
+            <label class="checkbox" style="display:block;margin-bottom:0.5rem">
+              Event
+              <select id="habit-event">
+                <option value="opened">Opened</option>
+                <option value="worked">Worked</option>
+                <option value="submitted">Submitted</option>
+                <option value="snoozed">Snoozed</option>
+              </select>
+            </label>
+            <label class="checkbox" style="display:block;margin-bottom:0.5rem">
+              Due at (for submitted — defaults to assignment due if empty)
+              <input id="habit-due" type="datetime-local" />
+            </label>
+            <button type="submit" class="btn btn-primary">Log event</button>
+            <p id="habit-msg" class="hint" style="margin-top:0.5rem"></p>
+          </form>
+        </div>
+      </section>
+
+      <section id="panel-chat" class="panel">
+        <div class="chat-layout">
+          <div>
+            <div id="chat-log" class="chat-log" aria-live="polite"></div>
+            <form id="chat-form" class="chat-input-row" style="margin-top:1rem">
+              <div class="row" style="flex:1">
+                <textarea
+                  id="chat-input"
+                  class="chat-field"
+                  placeholder="Ask for a plan, prioritization help, or how to break down work…"
+                  rows="3"
+                ></textarea>
+              </div>
+              <label class="checkbox">
+                <input type="checkbox" id="include-canvas" checked />
+                Include Canvas context
+              </label>
+              <button type="submit" class="btn btn-primary">Send</button>
+            </form>
+            <p class="hint">
+              Full answers need a Google AI key: set <code>GEMINI_API_KEY</code> (optional
+              <code>GEMINI_MODEL</code>, default <code>gemini-2.0-flash</code>). Without it, chat returns a
+              short fallback message.
+            </p>
+          </div>
+          <aside class="card side-card" style="margin:0">
+            <h3 style="margin-top:0">Tips</h3>
+            <ul class="hint" style="padding-left:1.1rem;margin:0;line-height:1.6">
+              <li>Load the dashboard first so assignment IDs fill the habit logger.</li>
+              <li>Snooze / submit events tune urgency over time.</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      Spring Boot · Port 8765 · <a href="/health" style="color:inherit">/health</a>
+    </footer>
+    <script src="/js/app.js" defer></script>
+  </body>
+</html>
